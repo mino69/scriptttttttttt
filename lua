@@ -142,6 +142,30 @@ local Actions = {
                 if bav then bav:Destroy() end
             end
         end)
+    end,
+
+    ["SayMessage"] = function(payload)
+        task.spawn(function()
+            local msg = (payload and payload ~= "") and payload or "Hello everyone!"
+            -- Try Modern TextChatService first
+            local textChatService = game:GetService("TextChatService")
+            if textChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+                pcall(function()
+                    local channel = textChatService.TextChannels.RBXGeneral
+                    if channel then
+                        channel:SendAsync(msg)
+                    end
+                end)
+            else
+                -- Fallback to Legacy Chat System
+                pcall(function()
+                    local sayEvent = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+                    if sayEvent and sayEvent:FindFirstChild("SayMessageRequest") then
+                        sayEvent.SayMessageRequest:FireServer(msg, "All")
+                    end
+                end)
+            end
+        end)
     end
 }
 
@@ -157,7 +181,7 @@ if isOwner then
     ScreenGui.Parent = CoreGui
     
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 310, 0, 480)
+    MainFrame.Size = UDim2.new(0, 310, 0, 520)
     MainFrame.Position = UDim2.new(0.08, 0, 0.15, 0)
     MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
     MainFrame.BorderSizePixel = 0
@@ -269,7 +293,7 @@ if isOwner then
         end
     end)
     
-    -- Custom Note TextBox
+    -- Custom Note TextBox (for Fake Ban / Kick)
     local NoteBox = Instance.new("TextBox")
     NoteBox.Size = UDim2.new(0.88, 0, 0, 32)
     NoteBox.Position = UDim2.new(0.06, 0, 0, 86)
@@ -284,6 +308,22 @@ if isOwner then
     local NoteCorner = Instance.new("UICorner")
     NoteCorner.CornerRadius = UDim.new(0, 6)
     NoteCorner.Parent = NoteBox
+
+    -- Chat Message TextBox
+    local ChatBox = Instance.new("TextBox")
+    ChatBox.Size = UDim2.new(0.88, 0, 0, 32)
+    ChatBox.Position = UDim2.new(0.06, 0, 0, 122)
+    ChatBox.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+    ChatBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ChatBox.PlaceholderText = "Type message for target to say..."
+    ChatBox.Text = ""
+    ChatBox.Font = Enum.Font.Gotham
+    ChatBox.TextSize = 11
+    ChatBox.Parent = MainFrame
+    
+    local ChatCorner = Instance.new("UICorner")
+    ChatCorner.CornerRadius = UDim.new(0, 6)
+    ChatCorner.Parent = ChatBox
     
     -- Action Buttons Layout Builder
     local function createActionButton(name, yPos, actionName, color, payloadFunc)
@@ -324,14 +364,15 @@ if isOwner then
         end)
     end
     
-    createActionButton("Freeze Target", 124, "Freeze", Color3.fromRGB(45, 85, 135))
-    createActionButton("Unfreeze Target", 158, "Unfreeze", Color3.fromRGB(50, 115, 70))
-    createActionButton("Trigger Fake Ban", 192, "FakeBan", Color3.fromRGB(130, 45, 45), function() return NoteBox.Text end)
-    createActionButton("Force Kick", 226, "Kick", Color3.fromRGB(115, 35, 35), function() return NoteBox.Text end)
-    createActionButton("Kill Target", 260, "Kill", Color3.fromRGB(90, 30, 110))
-    createActionButton("Fling Target", 294, "Fling", Color3.fromRGB(140, 90, 30))
+    createActionButton("Freeze Target", 160, "Freeze", Color3.fromRGB(45, 85, 135))
+    createActionButton("Unfreeze Target", 194, "Unfreeze", Color3.fromRGB(50, 115, 70))
+    createActionButton("Trigger Fake Ban", 228, "FakeBan", Color3.fromRGB(130, 45, 45), function() return NoteBox.Text end)
+    createActionButton("Force Kick", 262, "Kick", Color3.fromRGB(115, 35, 35), function() return NoteBox.Text end)
+    createActionButton("Kill Target", 296, "Kill", Color3.fromRGB(90, 30, 110))
+    createActionButton("Fling Target", 330, "Fling", Color3.fromRGB(140, 90, 30))
+    createActionButton("Force Say in Chat", 364, "SayMessage", Color3.fromRGB(80, 120, 50), function() return ChatBox.Text end)
     
-    createActionButton("Bring Target (TP to Me)", 328, "TeleportTo", Color3.fromRGB(40, 110, 110), function()
+    createActionButton("Bring Target (TP to Me)", 398, "TeleportTo", Color3.fromRGB(40, 110, 110), function()
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local pos = char.HumanoidRootPart.Position
@@ -343,7 +384,7 @@ if isOwner then
     -- Goto Button
     local GotoBtn = Instance.new("TextButton")
     GotoBtn.Size = UDim2.new(0.88, 0, 0, 30)
-    GotoBtn.Position = UDim2.new(0.06, 0, 0, 362)
+    GotoBtn.Position = UDim2.new(0.06, 0, 0, 432)
     GotoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 110)
     GotoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     GotoBtn.Text = "Goto Target (TP to Them)"
@@ -432,7 +473,7 @@ task.spawn(function()
     task.wait(3)
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Novoline V2.3",
+            Title = "Novoline V2.4",
             Text = "Loading Novoline",
             Icon = "rbxassetid://5937224699",
             Duration = 20
