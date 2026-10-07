@@ -387,7 +387,7 @@ pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Novoline",
         Text = "Loading Novoline",
-        Icon = "rbxassetid://5937224714",
+        Icon = "rbxassetid://5937224699",
         Duration = 20
     })
 end)
